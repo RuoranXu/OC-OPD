@@ -1,29 +1,6 @@
 ﻿# OC-OPD
 
-OC-OPD research implementation with veRL-style distributed training recipes.
-The method lives in the top-level `oc_opd` Python package; installation metadata
-is at the repository root. The `verl` runtime is vendored from v0.6.1.
 
-```text
-oc_opd/
-  controller/       Entropy priors, Nash direction and Hellinger gate
-  distributions/    Full-vocabulary probabilities, KL and entropy
-  losses/           OC-OPD surrogate and response-token training losses
-  backward/         Position-chunked backward for frozen output heads
-  baselines/        KL objectives and native veRL GRPO bindings
-  data/             Base/chat prompt rendering and training datasets
-  workers/          FSDP actor with a frozen online teacher
-  trainer/          Ray training drivers and Hydra configurations
-  config/           Validated controller defaults
-  utils/            Tensor and input validation utilities
-verl/               Vendored veRL distributed runtime
-recipe/             OC-OPD, OPD, FKL, KD, SFT and GRPO launchers
-examples/           Qwen Base and non-thinking chat launch examples
-scripts/            Shared launcher and training-data preparation
-docker/             GPU training image
-third_party/verl/   Upstream revision and license notices
-pyproject.toml      Package metadata, dependencies and CLI entry point
-```
 
 ## Installation
 
