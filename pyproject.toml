@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "oc-opd"
+version = "0.1.0"
+description = "OC-OPD: entropy-informed synthesis of on-policy distillation gradients"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = ["torch>=2.3"]
+
+[project.urls]
+Repository = "https://github.com/RuoranXu/OC-OPD"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["oc_opd*"]
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]

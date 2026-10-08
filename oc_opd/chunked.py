@@ -2,6 +2,7 @@
 
 import torch
 from torch import Tensor, nn
+
 from .objective import signal
 
 
@@ -17,10 +18,8 @@ def backward_chunked(
 ) -> dict[str, Tensor]:
     """Accumulate a token-mean OC-OPD backward without retaining full logits.
 
-    hidden and teacher_hidden have aligned leading (batch, sequence) dimensions;
-    their feature dimensions and devices may differ. Output token mappings must
-    agree. Calls hidden.backward once, accumulating gradients in the student.
-    The student head must be frozen. This function does not step an optimizer.
+    The student output head must be frozen. The method computes the exact full
+    vocabulary objective in position chunks and calls ``hidden.backward`` once.
     """
     if hidden.ndim < 2 or hidden.shape[:-1] != teacher_hidden.shape[:-1]:
         raise ValueError("Student and teacher prediction positions must align.")
@@ -30,15 +29,18 @@ def backward_chunked(
         raise ValueError("Student hidden states require grad and a same-device mask.")
     if not isinstance(chunk_size, int) or chunk_size < 1:
         raise ValueError("chunk_size must be a positive integer.")
-    if any(p.requires_grad for p in head.parameters()):
+    if any(parameter.requires_grad for parameter in head.parameters()):
         raise ValueError("The student output projection must be frozen.")
+
     count = int(valid_mask.sum())
     if count == 0:
         raise ValueError("At least one valid response position is required.")
+
     selected = hidden.detach()[valid_mask]
     teacher_selected = teacher_hidden.detach()[valid_mask.to(teacher_hidden.device)]
-    selected_grad = torch.zeros_like(selected)
+    selected_gradient = torch.zeros_like(selected)
     records: dict[str, list[Tensor]] = {}
+
     for start in range(0, count, chunk_size):
         stop = min(start + chunk_size, count)
         with torch.no_grad():
@@ -47,11 +49,14 @@ def backward_chunked(
             proxy = selected[start:stop].requires_grad_(True)
             logits = head(proxy)
             gradient, diagnostics = signal(logits, teacher_logits, **kwargs)
-            loss = (gradient * logits.to(gradient.dtype).log_softmax(-1)).sum() / count
-            selected_grad[start:stop] = torch.autograd.grad(loss, proxy)[0]
+            loss = (
+                gradient * logits.to(gradient.dtype).log_softmax(-1)
+            ).sum() / count
+            selected_gradient[start:stop] = torch.autograd.grad(loss, proxy)[0]
         for key, value in diagnostics.items():
             records.setdefault(key, []).append(value.detach())
-    hidden_grad = torch.zeros_like(hidden)
-    hidden_grad[valid_mask] = selected_grad
-    hidden.backward(hidden_grad)
+
+    hidden_gradient = torch.zeros_like(hidden)
+    hidden_gradient[valid_mask] = selected_gradient
+    hidden.backward(hidden_gradient)
     return {key: torch.cat(values, dim=0) for key, values in records.items()}
