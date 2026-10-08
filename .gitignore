@@ -11,4 +11,8 @@ dist/
 *.pth
 checkpoints/
 outputs/
-data/
+/data/
+.ruff_cache/
+.hydra/
+/wandb/
+/ray_results/

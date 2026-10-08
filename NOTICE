@@ -1,0 +1,6 @@
+This distribution includes veRL v0.6.1, commit
+d62da4950573d7a4b7ef2362337952e7ab59e78d, from
+https://github.com/verl-project/verl.
+
+The vendored verl/ subtree is covered by its Apache-2.0 license and retained
+copyright notices. See third_party/verl/LICENSE and third_party/verl/NOTICE.

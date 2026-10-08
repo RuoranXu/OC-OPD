@@ -1,0 +1,9 @@
+defaults:
+  - training
+  - _self_
+
+method: sft
+
+hydra:
+  searchpath:
+    - pkg://verl.trainer.config

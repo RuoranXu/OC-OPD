@@ -1,0 +1,101 @@
+defaults:
+  - ppo_trainer
+  - _self_
+
+method: oc_opd
+
+data:
+  train_files: []
+  val_files: []
+  train_batch_size: 128
+  max_prompt_length: 2048
+  max_response_length: 2048
+  prompt_key: prompt
+  response_key: response
+  prompt_mode: chat
+  enable_thinking: false
+  dataloader_num_workers: 0
+  seed: 42
+
+actor_rollout_ref:
+  model:
+    path: null
+    use_remove_padding: false
+    use_fused_kernels: false
+    enable_gradient_checkpointing: true
+    override_config:
+      attn_implementation: sdpa
+  actor:
+    strategy: fsdp
+    ppo_mini_batch_size: 128
+    ppo_micro_batch_size_per_gpu: 1
+    ppo_epochs: 1
+    use_dynamic_bsz: false
+    use_torch_compile: false
+    shuffle: false
+    use_kl_loss: false
+    grad_clip: 1.0
+    optim:
+      lr: 1.0e-6
+      betas: [0.9, 0.999]
+      weight_decay: 0.01
+      lr_warmup_steps_ratio: 0.0
+      lr_scheduler_type: constant
+    fsdp_config:
+      dtype: bfloat16
+      param_offload: true
+      optimizer_offload: true
+  ref:
+    log_prob_micro_batch_size_per_gpu: 1
+    fsdp_config:
+      model_dtype: bfloat16
+      dtype: bfloat16
+  rollout:
+    name: vllm
+    mode: sync
+    n: 1
+    temperature: 1.0
+    top_p: 1.0
+    top_k: -1
+    tensor_model_parallel_size: 1
+    gpu_memory_utilization: 0.35
+    enforce_eager: true
+    free_cache_engine: true
+    max_num_seqs: 64
+    max_num_batched_tokens: 8192
+    log_prob_micro_batch_size_per_gpu: 1
+  distillation:
+    name: ${method}
+    teacher_path: null
+    teacher_attention: sdpa
+    logit_chunk_size: 128
+    controller:
+      h0: 1.0
+      epsilon: 0.05
+      tau: 0.01
+
+algorithm:
+  adv_estimator: grpo
+  use_kl_in_reward: false
+
+trainer:
+  project_name: oc-opd
+  experiment_name: ${method}
+  logger: [console]
+  n_gpus_per_node: 4
+  nnodes: 1
+  total_training_steps: 360
+  save_freq: 30
+  max_actor_ckpt_to_keep: 2
+  val_before_train: false
+  test_freq: -1
+  balance_batch: false
+  resume_mode: disable
+  use_legacy_worker_impl: enable
+
+hydra:
+  run:
+    dir: .
+  output_subdir: null
+  job:
+    chdir: false

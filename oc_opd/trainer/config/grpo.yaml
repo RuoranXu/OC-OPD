@@ -1,0 +1,18 @@
+defaults:
+  - training
+  - _self_
+
+method: grpo
+
+actor_rollout_ref:
+  actor:
+    ppo_mini_batch_size: 32
+    use_kl_loss: true
+    kl_loss_coef: 0.001
+    kl_loss_type: low_var_kl
+  rollout:
+    n: 8
+
+hydra:
+  searchpath:
+    - pkg://verl.trainer.config

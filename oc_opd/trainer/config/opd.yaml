@@ -1,0 +1,9 @@
+defaults:
+  - training
+  - _self_
+
+method: opd
+
+hydra:
+  searchpath:
+    - pkg://verl.trainer.config

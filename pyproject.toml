@@ -4,21 +4,40 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "oc-opd"
-version = "0.1.0"
-description = "OC-OPD: entropy-informed synthesis of on-policy distillation gradients"
+version = "0.2.0"
+description = "OC-OPD and training baselines on a veRL distributed runtime"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = ["torch>=2.3"]
+
+[project.optional-dependencies]
+train = [
+  "torch>=2.7,<2.9", "accelerate>=1.2,<2", "codetiming", "datasets>=3,<5",
+  "dill", "hydra-core==1.3.2", "numpy<2", "pandas", "peft>=0.15,<0.18",
+  "pyarrow>=19", "pybind11", "pylatexenc", "ray[default]>=2.41,<3",
+  "torchdata>=0.11,<0.12", "tensordict>=0.8,<=0.10,!=0.9",
+  "transformers==4.56.2", "wandb", "packaging>=20", "tensorboard",
+  "einops", "psutil", "tqdm"
+]
+vllm = ["vllm==0.10.2"]
+
+[project.scripts]
+oc-opd-train = "oc_opd.trainer.main:main"
 
 [project.urls]
 Repository = "https://github.com/RuoranXu/OC-OPD"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["oc_opd*"]
+include = ["oc_opd*", "verl*"]
+
+[tool.setuptools.package-data]
+oc_opd = ["trainer/config/*.yaml"]
+verl = ["**/*.yaml", "version/version", "LICENSE", "NOTICE"]
 
 [tool.ruff]
 line-length = 100
+extend-exclude = ["verl"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]

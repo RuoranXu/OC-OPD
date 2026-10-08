@@ -1,0 +1,14 @@
+defaults:
+  - training
+  - _self_
+
+method: oc_opd
+
+hydra:
+  searchpath:
+    - pkg://verl.trainer.config
+  run:
+    dir: .
+  output_subdir: null
+  job:
+    chdir: false
