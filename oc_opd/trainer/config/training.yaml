@@ -4,6 +4,19 @@ defaults:
 
 method: oc_opd
 
+finetuning_type: full
+lora_rank: 16
+lora_alpha: 32
+lora_target_modules:
+  - q_proj
+  - k_proj
+  - v_proj
+  - o_proj
+  - gate_proj
+  - up_proj
+  - down_proj
+lora_adapter_path: null
+
 data:
   train_files: []
   val_files: []
@@ -69,10 +82,13 @@ actor_rollout_ref:
     teacher_path: null
     teacher_attention: sdpa
     logit_chunk_size: 128
+    loss_reduction: sequence_mean
     controller:
       h0: 1.0
       epsilon: 0.05
       tau: 0.01
+      vocabulary_mode: teacher_topk
+      teacher_top_k: 16
 
 algorithm:
   adv_estimator: grpo

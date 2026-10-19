@@ -1,4 +1,4 @@
-"""Full-vocabulary distillation actor using veRL FSDP optimizer handling."""
+"""Distillation actor with distributed response averaging and veRL optimizers."""
 
 import torch
 import torch.distributed as dist
@@ -22,13 +22,20 @@ class DistillationActor(DataParallelPPOActor):
         world_size = dist.get_world_size()
         metrics = {"actor/grad_norm": [], "actor/skipped_nonfinite_updates": []}
         aggregate = torch.zeros(3, device=device)
+        valid_responses = torch.zeros((), device=device)
+        reduction = self.method_config.get("loss_reduction", "sequence_mean")
         mini_size = self.config.ppo_mini_batch_size  # normalized by veRL worker
         micro_size = self.config.ppo_micro_batch_size_per_gpu
         for mini in data.split(mini_size):
-            total_tokens = mini.batch["response_mask"].sum().to(device, dtype=torch.float32)
-            dist.all_reduce(total_tokens)
-            if total_tokens.item() == 0:
+            lengths = mini.batch["response_mask"].sum(dim=-1)
+            counts = torch.stack((lengths.sum(), (lengths > 0).sum())).to(
+                device, dtype=torch.float32
+            )
+            dist.all_reduce(counts)
+            if counts[0].item() == 0:
                 raise ValueError("The entire distributed minibatch has no response tokens.")
+            denominator = counts[1] if reduction == "sequence_mean" else counts[0]
+            valid_responses += counts[1]
             self.actor_optimizer.zero_grad(set_to_none=True)
             for micro in mini.split(micro_size):
                 micro = micro.to(device)
@@ -51,10 +58,12 @@ class DistillationActor(DataParallelPPOActor):
                     method=self.method_config.name,
                     chunk_size=self.method_config.logit_chunk_size,
                     controller=dict(self.method_config.controller),
+                    reduction=reduction,
                 )
-                # FSDP averages gradients across ranks. Scale local token sums
-                # so variable-length responses get a true GLOBAL token mean.
-                loss = loss * world_size / total_tokens
+                # FSDP averages rank gradients. The loss sums per-response
+                # token means; normalize by the GLOBAL nonempty-response count.
+                # token_sum retains the explicit global-token-mean alternative.
+                loss = loss * world_size / denominator
                 if self.scaler is not None:
                     self.scaler.scale(loss).backward()
                 else:
@@ -62,8 +71,13 @@ class DistillationActor(DataParallelPPOActor):
                 aggregate += stats
                 del student_logits, teacher_logits, loss
             norm = self._optimizer_step()
+            if not torch.isfinite(norm):
+                raise FloatingPointError(
+                    "Non-finite actor gradients: veRL skipped the optimizer step; "
+                    "training stopped rather than consuming the update budget."
+                )
             metrics["actor/grad_norm"].append(float(norm.detach()))
-            metrics["actor/skipped_nonfinite_updates"].append(float(not torch.isfinite(norm)))
+            metrics["actor/skipped_nonfinite_updates"].append(0.0)
         self.actor_optimizer.zero_grad(set_to_none=True)
         dist.all_reduce(aggregate)
         count = aggregate[2].clamp_min(1)
@@ -71,5 +85,6 @@ class DistillationActor(DataParallelPPOActor):
             metrics["distill/reverse_kl"] = float(aggregate[0] / count)
             metrics["distill/forward_kl"] = float(aggregate[1] / count)
         metrics["distill/response_tokens"] = float(aggregate[2])
+        metrics["distill/valid_responses"] = float(valid_responses)
         metrics["actor/updates_per_iteration"] = len(metrics["actor/grad_norm"])
         return metrics

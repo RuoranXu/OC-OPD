@@ -1,10 +1,17 @@
-"""Frozen full-vocabulary OC-OPD logit-gradient controller."""
+"""Frozen OC-OPD controller on teacher top-k or full vocabulary support."""
 
 import torch
 from torch import Tensor
 
-from ..config import DEFAULT_EPSILON, DEFAULT_H0, DEFAULT_TAU, OCOPDConfig
-from ..distributions import entropy, forward_kl, from_logits, reverse_kl
+from ..config import (
+    DEFAULT_EPSILON,
+    DEFAULT_H0,
+    DEFAULT_TAU,
+    DEFAULT_TEACHER_TOP_K,
+    DEFAULT_VOCABULARY_MODE,
+    OCOPDConfig,
+)
+from ..distributions import entropy, forward_kl, from_logits, reverse_kl, select_support
 from ..utils.tensors import normalize_direction
 from .gating import hellinger_gate
 from .gradients import forward_kl_gradient, reverse_kl_gradient
@@ -20,15 +27,32 @@ def signal(
     h0: float = DEFAULT_H0,
     epsilon: float = DEFAULT_EPSILON,
     tau: float = DEFAULT_TAU,
+    vocabulary_mode: str = DEFAULT_VOCABULARY_MODE,
+    teacher_top_k: int = DEFAULT_TEACHER_TOP_K,
 ) -> tuple[Tensor, dict[str, Tensor]]:
     """Return the detached signal and per-position diagnostics.
 
     Logits must have identical (..., vocabulary) shapes and token mappings.
-    Diagnostics retain shape (..., 1); the controller uses at least float32.
+    By default, BOTH distributions are renormalized over teacher top-16 IDs.
+    Signal entries outside this support are zero; diagnostics describe the
+    conditional distributions. Set vocabulary_mode='full' for the exact original
+    full-vocabulary controller. Diagnostics retain shape (..., 1).
     """
-    config = OCOPDConfig(h0=h0, epsilon=epsilon, tau=tau)
+    config = OCOPDConfig(
+        h0=h0,
+        epsilon=epsilon,
+        tau=tau,
+        vocabulary_mode=vocabulary_mode,
+        teacher_top_k=teacher_top_k,
+    )
+    selected_student, selected_teacher, indices = select_support(
+        student_logits,
+        teacher_logits,
+        vocabulary_mode=config.vocabulary_mode,
+        teacher_top_k=config.teacher_top_k,
+    )
     log_student, log_teacher, student_prob, teacher_prob = from_logits(
-        student_logits, teacher_logits
+        selected_student, selected_teacher
     )
     reverse = reverse_kl(student_prob, log_student, log_teacher)
     forward = forward_kl(teacher_prob, log_teacher, log_student)
@@ -51,6 +75,8 @@ def signal(
     gate, distance = hellinger_gate(student_prob, teacher_prob, tau=config.tau)
     gradient = gate * forward_norm * direction
     gradient = gradient - gradient.mean(-1, keepdim=True)
+    if indices is not None:
+        gradient = gradient.new_zeros(student_logits.shape).scatter_(-1, indices, gradient)
 
     return gradient, {
         "reverse_kl": reverse,
