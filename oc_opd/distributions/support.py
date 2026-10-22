@@ -15,8 +15,9 @@ def select_support(
     vocabulary_mode: str = DEFAULT_VOCABULARY_MODE,
     teacher_top_k: int = DEFAULT_TEACHER_TOP_K,
 ) -> tuple[Tensor, Tensor, Tensor | None]:
-    """Select teacher top-k IDs; subsequent softmax renormalizes BOTH models.
+    """Keep the full vocabulary by default; optionally select teacher top-k IDs.
 
+    In top-k mode, subsequent softmax renormalizes BOTH models over that support.
     This defines distributions conditional on the same teacher-selected support.
     It is not full-vocabulary KL and does not preserve a full-vocabulary student
     denominator. Selection and teacher values are detached; student gather keeps

@@ -27,7 +27,8 @@ def backward_chunked(
     head may be trainable, including weights tied to the backbone embedding.
     Gradients for head parameters accumulate alongside one hidden.backward call.
     No optimizer steps, mixed-precision scaling, or synchronization are performed.
-    Defaults to teacher top-16; vocabulary_mode='full' selects the full objective.
+    Defaults to the full vocabulary; vocabulary_mode='teacher_topk' selects
+    teacher top-16 (configurable with teacher_top_k).
     """
     if hidden.ndim < 2 or hidden.shape[:-1] != teacher_hidden.shape[:-1]:
         raise ValueError("Student and teacher prediction positions must align.")

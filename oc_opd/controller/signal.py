@@ -33,10 +33,11 @@ def signal(
     """Return the detached signal and per-position diagnostics.
 
     Logits must have identical (..., vocabulary) shapes and token mappings.
-    By default, BOTH distributions are renormalized over teacher top-16 IDs.
-    Signal entries outside this support are zero; diagnostics describe the
-    conditional distributions. Set vocabulary_mode='full' for the exact original
-    full-vocabulary controller. Diagnostics retain shape (..., 1).
+    The default uses the exact original full-vocabulary controller. Set
+    vocabulary_mode='teacher_topk' to renormalize BOTH distributions over teacher
+    top-16 IDs (configurable with teacher_top_k). Signal entries outside this
+    support are zero; diagnostics describe the conditional distributions.
+    Diagnostics retain shape (..., 1).
     """
     config = OCOPDConfig(
         h0=h0,

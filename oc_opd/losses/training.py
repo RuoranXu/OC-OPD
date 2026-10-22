@@ -33,8 +33,8 @@ def response_loss_sum(
     sequence_mean (default) requires the caller to divide by the GLOBAL number
     of nonempty responses. token_sum instead requires global valid-token count.
     Empty responses never change either denominator. Distillation defaults to
-    conditional teacher top-16 distributions; controller.vocabulary_mode='full'
-    selects full-vocabulary OC and KL baselines.
+    full-vocabulary OC and KL baselines; controller.vocabulary_mode='teacher_topk'
+    selects conditional teacher top-16 distributions (or controller.teacher_top_k).
     Inputs are already shifted to predict response tokens. Chunk checkpointing
     bounds the additional FP32 vocabulary work, not the model's output logits.
     All methods use temperature 1; rollout temperature is a separate setting.

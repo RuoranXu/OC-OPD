@@ -8,7 +8,7 @@ from dataclasses import asdict, dataclass
 DEFAULT_H0 = 1.0
 DEFAULT_EPSILON = 0.05
 DEFAULT_TAU = 0.01
-DEFAULT_VOCABULARY_MODE = "teacher_topk"
+DEFAULT_VOCABULARY_MODE = "full"
 DEFAULT_TEACHER_TOP_K = 16
 
 

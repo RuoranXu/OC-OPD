@@ -87,7 +87,7 @@ actor_rollout_ref:
       h0: 1.0
       epsilon: 0.05
       tau: 0.01
-      vocabulary_mode: teacher_topk
+      vocabulary_mode: full
       teacher_top_k: 16
 
 algorithm:
