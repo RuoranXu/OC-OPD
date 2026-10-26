@@ -1,0 +1,6 @@
+# Isolated historical evaluation environment (Linux, Python 3.10 or 3.11).
+# Install separately from the repository's newer training/vLLM environment.
+vllm==0.8.5
+torch==2.6.0
+transformers==4.51.3
+pyarrow==19.0.1
