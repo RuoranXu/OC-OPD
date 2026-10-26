@@ -1,4 +1,4 @@
-"""AIME 2024/2025 evaluation with the original OC-OPD n=32 sampling protocol.
+"""example: AIME evaluation.
 
 Use a separate evaluation environment; see run_aime.sh for complete commands.
 Scores are fixed-sample pass@32 and mean correctness (avg@32), in percent.
