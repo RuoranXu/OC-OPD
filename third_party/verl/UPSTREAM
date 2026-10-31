@@ -1,9 +1,0 @@
-Source: https://github.com/verl-project/verl
-Release: v0.6.1
-Commit: d62da4950573d7a4b7ef2362337952e7ab59e78d
-Vendored subtree: verl/
-License: Apache-2.0 (LICENSE and NOTICE in this directory)
-
-The upstream Python sources are preserved. OC-OPD integrations live in
-oc_opd/, recipe/, examples/ and scripts/. No SEED selection algorithm or
-benchmark result files are imported.
