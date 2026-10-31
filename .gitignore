@@ -4,6 +4,7 @@ __pycache__/
 build/
 dist/
 .venv/
+.venv-*/
 .pytest_cache/
 .env
 *.safetensors
@@ -11,7 +12,16 @@ dist/
 *.pth
 checkpoints/
 outputs/
-/data/
+# Keep data entry points visible; datasets and model artifacts stay local.
+/data/*
+!/data/raw/
+!/data/processed/
+/data/raw/*
+!/data/raw/.gitkeep
+/data/processed/*
+!/data/processed/.gitkeep
+/models/
+/logs/
 .ruff_cache/
 .hydra/
 /wandb/

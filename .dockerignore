@@ -3,10 +3,17 @@ build
 dist
 *.egg-info
 __pycache__
+**/__pycache__
+.pytest_cache
+.ruff_cache
 .venv
+.venv-*
 /data
 checkpoints
 outputs
 wandb
+.env
+.env.*
 *.safetensors
 *.pt
+*.pth

@@ -1,0 +1,6 @@
+# CUDA rollout backend for the current training environment, not examples/test.
+# vLLM 0.10.2's CUDA dependencies select torch==2.8.0; its transformers>=4.55.2
+# requirement is compatible with the training pin transformers==4.56.2.
+# Source: https://github.com/vllm-project/vllm/blob/v0.10.2/requirements/cuda.txt
+# Install together with the training extra: python -m pip install -e '.[train,vllm]'
+vllm==0.10.2

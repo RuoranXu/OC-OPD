@@ -1,6 +1,9 @@
-* text=auto
+* text=auto eol=lf
 *.py text eol=lf
 *.sh text eol=lf
 *.yaml text eol=lf
 *.toml text eol=lf
 *.md text eol=lf
+*.txt text eol=lf
+*.json text eol=lf
+*.gitkeep text eol=lf

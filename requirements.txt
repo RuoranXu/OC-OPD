@@ -1,1 +1,5 @@
+# Core OC-OPD objectives and tensor utilities; no distributed runtime is required.
+# Package metadata reads this file. Install the lightweight package with:
+#   python -m pip install -e .
+# For training use .[train,vllm]; examples/test has its own historical environment.
 torch>=2.3
