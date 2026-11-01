@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+# Modified for OC-OPD: training-only fit; evaluation is invoked separately.
 
 
 import os
@@ -129,14 +130,10 @@ class SFTTrainer:
 
         self.steps_per_epoch = len(self.train_dataloader)
 
-        # manage save and test frequency
+        # manage checkpoint save frequency
         self.save_freq = self.config.trainer.save_freq
         if self.save_freq == "after_each_epoch":
             self.save_freq = self.steps_per_epoch
-
-        self.test_freq = self.config.trainer.test_freq
-        if self.test_freq == "after_each_epoch":
-            self.test_freq = self.steps_per_epoch
 
         self.engine.initialize()
 
@@ -216,7 +213,6 @@ class SFTTrainer:
             )
 
         global_step = self.resume_global_step  # Start from resumed step
-        last_valid_metric = None
 
         log_with_rank(
             f"Total training steps: {self.total_training_steps},",
@@ -322,33 +318,7 @@ class SFTTrainer:
                         tracking.log(data=metrics, step=global_step)
 
                 is_last_step = global_step >= self.total_training_steps
-                is_valid_step = global_step % self.test_freq == 0
-                is_save_step = global_step % self.save_freq == 0
-
-                # early exit or validation step
-                if is_last_step and self.val_dataloader is not None or (self.test_freq > 0 and is_valid_step):
-                    # Perform validation
-                    val_losses = []
-                    for val_data in self.val_dataloader:
-                        with self.engine.eval_mode():
-                            # construct tensordict
-                            val_data = tu.get_tensordict(tensor_dict=val_data, non_tensor_dict=meta_info)
-                            output = self.engine.infer_batch(data=val_data, loss_function=self.loss_fn)
-                            if self.engine.is_mp_src_rank_with_outputs():
-                                val_losses.extend(output["metrics"]["loss"])
-
-                    if self.engine.is_mp_src_rank_with_outputs():
-                        val_loss = torch.mean(torch.tensor(val_losses, device=self.device_name))
-                        # average over data parallel group
-                        torch.distributed.all_reduce(
-                            val_loss, op=torch.distributed.ReduceOp.AVG, group=self.engine.get_data_parallel_group()
-                        )
-
-                    if is_logging:
-                        metric = {"val/loss": val_loss.detach().item()}
-                        tracking.log(data=metric, step=global_step)
-                        last_valid_metric = metric
-                    torch.distributed.barrier()
+                is_save_step = self.save_freq > 0 and global_step % self.save_freq == 0
 
                 if is_last_step or (self.save_freq > 0 and is_save_step):
                     self.ckpt_handler.save_checkpoint(step=global_step)
@@ -356,7 +326,6 @@ class SFTTrainer:
                 if is_last_step:
                     if is_logging:
                         print(f"Total time for train steps: {train_time:.2f}s")
-                        print(f"Final validation metrics: {last_valid_metric}")
                     return
 
 

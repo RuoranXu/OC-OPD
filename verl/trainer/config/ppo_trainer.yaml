@@ -123,7 +123,7 @@ trainer:
   balance_batch: True
 
   # Number of epochs in training
-  total_epochs: 30
+  total_epochs: ???
 
   # Total training steps (can be set explicitly or derived from epochs)
   total_training_steps: null

@@ -2,7 +2,6 @@ include pyproject.toml setup.py README.md NOTICE requirements*.txt
 recursive-include oc_opd/trainer/config *.yaml
 recursive-include verl *.yaml
 include verl/version/version verl/LICENSE verl/NOTICE
-recursive-include third_party/verl *
 recursive-include recipe *.sh *.yaml
 recursive-include examples *.sh *.py *.txt *.yaml *.json
 recursive-include scripts *.sh *.py

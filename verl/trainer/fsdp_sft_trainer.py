@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+# Modified for OC-OPD: training-only fit; evaluation is invoked separately.
 """
 A lightweight one-file FSDP SFT Trainer
 TODO(zhangchi.usc1992)
@@ -716,7 +717,6 @@ class FSDPSFTTrainer:
             )
 
         global_step = self.resume_global_step  # Start from resumed step
-        last_valid_metric = None
         # compute the total training steps.
         # the total training steps in SFT is mainly for early exit
         total_training_steps = len(self.train_dataloader) * self.config.trainer.total_epochs
@@ -766,25 +766,10 @@ class FSDPSFTTrainer:
                     tracking.log(data=metric, step=global_step)
 
                 is_last_step = global_step >= self.total_training_steps
-                is_valid_step = global_step % self.config.trainer.test_freq == 0
-                is_save_step = global_step % self.config.trainer.save_freq == 0
-
-                # early exit or validation step
-                if is_last_step or (self.config.trainer.test_freq > 0 and is_valid_step):
-                    # Perform validation
-                    val_losses = []
-                    for val_data in self.val_dataloader:
-                        val_data = TensorDict(val_data, batch_size=self.config.data.micro_batch_size_per_gpu).to(
-                            self.device_name
-                        )
-                        val_loss = self.validation_step(val_data)
-                        val_losses.append(val_loss)
-                    if rank == 0:
-                        val_loss = torch.mean(torch.stack(val_losses))
-                        metric = {"val/loss": val_loss.detach().item()}
-                        tracking.log(data=metric, step=global_step)
-                        last_valid_metric = metric
-                    torch.distributed.barrier()
+                is_save_step = (
+                    self.config.trainer.save_freq > 0
+                    and global_step % self.config.trainer.save_freq == 0
+                )
 
                 if is_last_step or (self.config.trainer.save_freq > 0 and is_save_step):
                     self.save_checkpoint(step=global_step)
@@ -792,7 +777,6 @@ class FSDPSFTTrainer:
                 if is_last_step:
                     if rank == 0:
                         print(f"Total time for train steps: {train_time:.2f}s")
-                        print(f"Final validation metrics: {last_valid_metric}")
                     return
 
 

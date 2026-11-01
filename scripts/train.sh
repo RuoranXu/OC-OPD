@@ -8,9 +8,16 @@ case "$method" in
   *) echo "Unknown method: $method" >&2; exit 2 ;;
 esac
 
+# Fill exactly one training budget here, through the environment, or through
+# trainer.total_epochs / trainer.total_training_steps in the Hydra arguments.
+# Empty values never fall back to a built-in training duration.
+TOTAL_EPOCHS="${TOTAL_EPOCHS:-}"
+TOTAL_STEPS="${TOTAL_STEPS:-}"
+
 root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 prompt_mode="${PROMPT_MODE:-chat}"
 train_file_override=false
+training_budget_override=false
 inspect_config=false
 for argument in "$@"; do
   case "$argument" in
@@ -20,9 +27,19 @@ for argument in "$@"; do
       prompt_mode="${prompt_mode#\'}"; prompt_mode="${prompt_mode%\'}"
       ;;
     data.train_files=*|+data.train_files=*|++data.train_files=*) train_file_override=true ;;
+    trainer.total_epochs=*|+trainer.total_epochs=*|++trainer.total_epochs=*|\
+    trainer.total_training_steps=*|+trainer.total_training_steps=*|++trainer.total_training_steps=*)
+      training_budget_override=true
+      ;;
     --cfg|--cfg=*|--help|-h|--info|--info=*) inspect_config=true ;;
   esac
 done
+if [[ "$inspect_config" == false && "$training_budget_override" == false \
+      && -z "$TOTAL_EPOCHS" && -z "$TOTAL_STEPS" ]]; then
+  echo 'Set exactly one training budget: TOTAL_EPOCHS or TOTAL_STEPS (left blank in scripts/train.sh).' >&2
+  echo 'Alternatively provide trainer.total_epochs or trainer.total_training_steps as a Hydra override.' >&2
+  exit 2
+fi
 case "$prompt_mode" in
   base|chat) ;;
   *) echo "PROMPT_MODE / data.prompt_mode must be base or chat" >&2; exit 2 ;;
@@ -92,6 +109,8 @@ args=(
   "trainer.n_gpus_per_node=$n_gpus"
   "trainer.experiment_name=$(hydra_string "$run_name")"
   "trainer.default_local_dir=$(hydra_string "$run_dir")"
+  "trainer.total_epochs=${TOTAL_EPOCHS:-null}"
+  "trainer.total_training_steps=${TOTAL_STEPS:-null}"
 )
 case "$method" in
   oc_opd|opd|fkl|kd)

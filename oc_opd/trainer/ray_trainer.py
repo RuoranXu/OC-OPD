@@ -1,6 +1,5 @@
 """Training-only veRL drivers, without benchmark evaluation or seed selection."""
 
-import math
 import time
 
 import torch
@@ -13,6 +12,8 @@ from verl.trainer.ppo.ray_trainer import RayPPOTrainer
 from verl.utils.dataset.rl_dataset import collate_fn as default_collate_fn
 from verl.utils.metric import reduce_metrics
 from verl.utils.tracking import Tracking
+
+from .validation import resolve_training_budget
 
 
 class TrainingOnlyPPOTrainer(RayPPOTrainer):
@@ -35,21 +36,15 @@ class TrainingOnlyPPOTrainer(RayPPOTrainer):
         self.val_dataloader = None
         if not len(self.train_dataloader):
             raise ValueError("Training data contains fewer examples than data.train_batch_size.")
-        self.total_training_steps = (
-            self.config.trainer.total_training_steps
-            or len(self.train_dataloader) * self.config.trainer.total_epochs
+        self.total_training_steps, loop_epochs = resolve_training_budget(
+            self.config.trainer, len(self.train_dataloader)
         )
-        if self.total_training_steps < 1:
-            raise ValueError("Training step limit must be positive.")
         with open_dict(self.config):
             # veRL's scheduler advances once per iteration (not per minibatch).
             self.config.actor_rollout_ref.actor.optim.total_training_steps = (
                 self.total_training_steps
             )
-            self.config.trainer.total_epochs = max(
-                self.config.trainer.total_epochs,
-                math.ceil(self.total_training_steps / len(self.train_dataloader)) + 1,
-            )
+            self.config.trainer.total_epochs = loop_epochs
 
 
 class DistillationTrainer(TrainingOnlyPPOTrainer):

@@ -13,6 +13,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+# Modified for OC-OPD: training-only fit and a completed-resume budget guard.
 """
 PPO Trainer with Ray-based single controller.
 This trainer supports model-agonistic model initialization with huggingface
@@ -24,7 +25,6 @@ import uuid
 from collections import defaultdict
 from copy import deepcopy
 from dataclasses import dataclass, field
-from pprint import pprint
 from typing import Optional
 
 import numpy as np
@@ -975,16 +975,8 @@ class RayPPOTrainer:
 
         # load checkpoint before doing anything
         self._load_checkpoint()
-
-        # perform validation before training
-        # currently, we only support validation using the reward_function.
-        if self.val_reward_fn is not None and self.config.trainer.get("val_before_train", True):
-            val_metrics = self._validate()
-            assert val_metrics, f"{val_metrics=}"
-            pprint(f"Initial validation metrics: {val_metrics}")
-            logger.log(data=val_metrics, step=self.global_steps)
-            if self.config.trainer.get("val_only", False):
-                return
+        if self.global_steps >= self.total_training_steps:
+            return
 
         if self.config.actor_rollout_ref.rollout.get("skip_rollout", False):
             rollout_skip = RolloutSkip(self.config, self.actor_rollout_wg)
@@ -995,7 +987,6 @@ class RayPPOTrainer:
 
         # we start from step 1
         self.global_steps += 1
-        last_val_metrics = None
         self.max_steps_duration = 0
 
         prev_step_profile = False
@@ -1221,18 +1212,6 @@ class RayPPOTrainer:
                     if rollout_data_dir:
                         self._log_rollout_data(batch, reward_extra_infos_dict, timing_raw, rollout_data_dir)
 
-                # validate
-                if (
-                    self.val_reward_fn is not None
-                    and self.config.trainer.test_freq > 0
-                    and (is_last_step or self.global_steps % self.config.trainer.test_freq == 0)
-                ):
-                    with marked_timer("testing", timing_raw, color="green"):
-                        val_metrics: dict = self._validate()
-                        if is_last_step:
-                            last_val_metrics = val_metrics
-                    metrics.update(val_metrics)
-
                 # Check if the ESI (Elastic Server Instance)/training plan is close to expiration.
                 esi_close_to_expiration = should_save_ckpt_esi(
                     max_steps_duration=self.max_steps_duration,
@@ -1304,7 +1283,6 @@ class RayPPOTrainer:
                     )
 
                 if is_last_step:
-                    pprint(f"Final validation metrics: {last_val_metrics}")
                     progress_bar.close()
                     return
 

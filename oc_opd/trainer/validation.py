@@ -11,6 +11,41 @@ def _positive_integer(value, name):
     return value
 
 
+def validate_training_budget(trainer):
+    """Require exactly one explicit outer training budget, before allocating workers."""
+    epochs = trainer.get("total_epochs")
+    steps = trainer.get("total_training_steps")
+    if (epochs is None) == (steps is None):
+        raise ValueError(
+            "Set exactly one of trainer.total_epochs or trainer.total_training_steps; "
+            "neither has a default training budget."
+        )
+    if epochs is not None:
+        _positive_integer(epochs, "trainer.total_epochs")
+    if steps is not None:
+        _positive_integer(steps, "trainer.total_training_steps")
+    return epochs, steps
+
+
+def resolve_training_budget(trainer, batches_per_epoch):
+    """Return the absolute iteration limit and the required outer-loop bound."""
+    epochs, steps = validate_training_budget(trainer)
+    batches = _positive_integer(batches_per_epoch, "batches_per_epoch")
+    if epochs is not None:
+        return epochs * batches, epochs
+    return steps, (steps + batches - 1) // batches
+
+
+def validate_training_only(config):
+    if config.data.get("val_files"):
+        raise ValueError("Training recipes do not accept data.val_files; evaluate separately.")
+    if config.trainer.get("val_before_train", False) or config.trainer.get("val_only", False):
+        raise ValueError("Training recipes require val_before_train=false and val_only=false.")
+    test_freq = config.trainer.get("test_freq", -1)
+    if isinstance(test_freq, bool) or not isinstance(test_freq, int) or test_freq > 0:
+        raise ValueError("Training recipes require trainer.test_freq <= 0; evaluate separately.")
+
+
 def configure_finetuning(config):
     """Resolve the public full/LoRA switch before veRL creates model workers."""
     kind = config.get("finetuning_type", "full")
@@ -72,6 +107,8 @@ def configure_finetuning(config):
 
 
 def validate_training_config(config):
+    validate_training_budget(config.trainer)
+    validate_training_only(config)
     configure_finetuning(config)
     method = config.method
     if method not in {"oc_opd", "opd", "fkl", "kd", "sft", "grpo"}:
@@ -93,8 +130,6 @@ def validate_training_config(config):
     micro = _positive_integer(
         actor.ppo_micro_batch_size_per_gpu, "actor.ppo_micro_batch_size_per_gpu"
     )
-    if config.trainer.get("total_training_steps") is not None:
-        _positive_integer(config.trainer.total_training_steps, "trainer.total_training_steps")
     if (
         world < 1
         or actor.ppo_mini_batch_size < 1

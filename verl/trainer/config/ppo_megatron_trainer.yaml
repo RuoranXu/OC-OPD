@@ -76,7 +76,7 @@ algorithm:
 
 trainer:
   balance_batch: True
-  total_epochs: 30
+  total_epochs: ???
   total_training_steps: null
   project_name: verl_examples
   experiment_name: gsm8k

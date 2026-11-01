@@ -100,10 +100,13 @@ trainer:
   logger: [console]
   n_gpus_per_node: 4
   nnodes: 1
-  total_training_steps: 360
+  # Set exactly one outer budget explicitly; ppo_epochs above is an inner pass.
+  total_epochs: null
+  total_training_steps: null
   save_freq: 30
   max_actor_ckpt_to_keep: 2
   val_before_train: false
+  val_only: false
   test_freq: -1
   balance_batch: false
   resume_mode: disable
