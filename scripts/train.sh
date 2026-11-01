@@ -8,9 +8,6 @@ case "$method" in
   *) echo "Unknown method: $method" >&2; exit 2 ;;
 esac
 
-# Fill exactly one training budget here, through the environment, or through
-# trainer.total_epochs / trainer.total_training_steps in the Hydra arguments.
-# Empty values never fall back to a built-in training duration.
 TOTAL_EPOCHS="${TOTAL_EPOCHS:-}"
 TOTAL_STEPS="${TOTAL_STEPS:-}"
 
