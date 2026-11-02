@@ -1,6 +1,6 @@
 """example: AIME evaluation.
 
-Use a separate evaluation environment; see the README Test section for commands.
+Use a separate evaluation environment; see the README Evaluation section for commands.
 Scores are fixed-sample pass@32 and mean correctness (avg@32), in percent.
 """
 

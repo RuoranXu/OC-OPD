@@ -39,7 +39,7 @@ bash examples/oc_opd/run_qwen_chat.sh
 bash examples/oc_opd/run_qwen_chat.sh --cfg job --resolve
 ```
 
-## Test
+## Evaluation
 
 ```bash
 python3.10 -m venv .venv-test
