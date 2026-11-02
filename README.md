@@ -16,6 +16,7 @@ python -m pip install -e '.[train,vllm]'
 ### 2. Prepare data
 
 ```bash
+HF_ENDPOINT=https://huggingface.co \
 hf download BytedTsinghua-SIA/DAPO-Math-17k data/dapo-math-17k.parquet \
   --repo-type dataset --local-dir data/raw/dapo-math-17k
 ```
@@ -38,6 +39,12 @@ bash examples/oc_opd/run_qwen_chat.sh
 bash examples/oc_opd/run_qwen_chat.sh --cfg job --resolve
 ```
 
-## Evaluation
+## Test
 
-For manual AIME 2024/2025 evaluation with avg@32 and pass@32, follow [run_aime.sh](examples/test/run_aime.sh).
+```bash
+python3.10 -m venv .venv-test
+.venv-test/bin/python -m pip install -r examples/test/requirements.txt
+read -rp "Hugging Face model directory or ID: " MODEL_PATH
+.venv-test/bin/python -u examples/test/eval_aime.py \
+  --model "$MODEL_PATH" --mode nonthinking
+```
